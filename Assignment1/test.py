@@ -94,40 +94,47 @@ y_test_datasets = {
     "banknotes": y_test_banknotes
 }
 
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import seaborn as sns
+
+# Rest of your code...
+
 # Create a 7-by-3 table of boxplots for classifier accuracy versus parameter values
-plt.figure(figsize=(15, 20))
+plt.figure(figsize=(60, 50))
 num_classifiers = len(classifiers)
 num_datasets = len(datasets)
 
+positions_dict = {}
+
+# Adjust the height_ratios to increase the subplot height
+fig, axs = plt.subplots(num_classifiers, num_datasets, figsize=(15, 20),
+                        gridspec_kw={'height_ratios': [1.5] * num_classifiers})
+
 for i, (clf_name, clf) in enumerate(classifiers.items(), 1):
     for j, dataset_name in enumerate(datasets.keys(), 1):
-        plt.subplot(num_classifiers, num_datasets, (i - 1) * num_datasets + j)
+        ax = axs[i - 1, j - 1]
 
         param_name = list(parameter_values[clf_name].keys())[0]
         param_values = parameter_values[clf_name][param_name]
         accuracies = calculate_accuracy(clf, param_name, param_values,
                                         x_train_datasets[dataset_name], y_train_datasets[dataset_name],
                                         x_test_datasets[dataset_name], y_test_datasets[dataset_name])
-        print("Accuracy:")
-        print(accuracies)
+        positions = np.arange(1, len(accuracies) + 1)
+        positions_dict[(clf_name, dataset_name)] = positions
 
-        # Create positions for boxplots (for each parameter value)
-        positions = []
-        for i in range(len(accuracies)):
-            positions.append((i + 1))
+        ax.boxplot(accuracies, showfliers=False)
 
-        print("positions: ")
-        print(positions)
+        ax.set_title(f"{dataset_name} - {clf_name}",fontsize=8)
+        ax.set_xlabel("Parameter Values",fontsize=8)
+        ax.set_ylabel("Accuracy",fontsize=8)
+        ax.set_xticks(positions)  # Set x-axis labels as parameter values
+        ax.set_xticklabels(param_values, rotation=45, ha='right',fontsize=8)  # Rotate and align x-axis labels
 
-        plt.boxplot(accuracies, showfliers=False)
-
-        plt.title(f"{dataset_name} - {clf_name}")
-        plt.xlabel("Parameter Values")
-        plt.ylabel("Accuracy")
-        plt.xticks(positions, param_values)  # Set x-axis labels as parameter values
-
-plt.tight_layout()
+plt.tight_layout()  # Adjust spacing and layout
 plt.show()
+
 
 # Create Table 1 and Table 2
 table1_data = []
