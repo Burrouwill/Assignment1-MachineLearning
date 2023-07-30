@@ -40,47 +40,91 @@ parameter_values = {
     'MLPClassifier': {'alpha': [1e-5, 1e-3, 0.1, 10.0]}
 }
 
+
 # Function to calculate accuracy for each parameter value
+
 def calculate_accuracy(classifier, param_name, param_values, x_train, y_train, x_test, y_test):
-    accuracies = []
+    all_accuracies = []  # Initialize an empty list to store all accuracies for different parameter values
     for value in param_values:
         clf = classifier.set_params(**{param_name: value})
         clf.fit(x_train, y_train)
         y_pred = clf.predict(x_test)
         acc = accuracy_score(y_test, y_pred)
-        accuracies.append(acc)
-    return accuracies
+        all_accuracies.append(acc)  # Append the accuracy for this parameter value
+    return all_accuracies  # Return a list of accuracies for all parameter values
+
 
 # Extract features and labels for each dataset
 x_steel, labels_steel = datasets["steel-plates-fault"]["data"], datasets["steel-plates-fault"]["target"]
 x_ionosphere, labels_ionosphere = datasets["ionosphere"]["data"], datasets["ionosphere"]["target"]
 x_banknotes, labels_banknotes = datasets["banknotes"]["data"], datasets["banknotes"]["target"]
 
-# Split data into training and test
-x_train_steel, x_test_steel, y_train_steel, y_test_steel = train_test_split(x_steel, labels_steel, test_size=0.5, random_state=309)
-x_train_ionosphere, x_test_ionosphere, y_train_ionosphere, y_test_ionosphere = train_test_split(x_ionosphere, labels_ionosphere, test_size=0.5, random_state=309)
-x_train_banknotes, x_test_banknotes, y_train_banknotes, y_test_banknotes = train_test_split(x_banknotes, labels_banknotes, test_size=0.5, random_state=309)
+x_train_steel, x_test_steel, y_train_steel, y_test_steel = train_test_split(x_steel, labels_steel, test_size=0.5,
+                                                                            random_state=309)
+x_train_ionosphere, x_test_ionosphere, y_train_ionosphere, y_test_ionosphere = train_test_split(x_ionosphere,
+                                                                                                labels_ionosphere,
+                                                                                                test_size=0.5,
+                                                                                                random_state=309)
+x_train_banknotes, x_test_banknotes, y_train_banknotes, y_test_banknotes = train_test_split(x_banknotes,
+                                                                                            labels_banknotes,
+                                                                                            test_size=0.5,
+                                                                                            random_state=309)
+
+x_train_datasets = {
+    "steel-plates-fault": x_train_steel,
+    "ionosphere": x_train_ionosphere,
+    "banknotes": x_train_banknotes
+}
+
+x_test_datasets = {
+    "steel-plates-fault": x_test_steel,
+    "ionosphere": x_test_ionosphere,
+    "banknotes": x_test_banknotes
+}
+
+y_train_datasets = {
+    "steel-plates-fault": y_train_steel,
+    "ionosphere": y_train_ionosphere,
+    "banknotes": y_train_banknotes
+}
+
+y_test_datasets = {
+    "steel-plates-fault": y_test_steel,
+    "ionosphere": y_test_ionosphere,
+    "banknotes": y_test_banknotes
+}
 
 # Create a 7-by-3 table of boxplots for classifier accuracy versus parameter values
 plt.figure(figsize=(15, 20))
-i = 1
-box_data = []
-for clf_name, clf in classifiers.items():
-    data = []
-    for dataset_name, (x_train, x_test, y_train, y_test) in zip(["steel-plates-fault", "ionosphere", "banknotes"],
-                                                                [(x_train_steel, x_test_steel, y_train_steel, y_test_steel),
-                                                                 (x_train_ionosphere, x_test_ionosphere, y_train_ionosphere, y_test_ionosphere),
-                                                                 (x_train_banknotes, x_test_banknotes, y_train_banknotes, y_test_banknotes)]):
+num_classifiers = len(classifiers)
+num_datasets = len(datasets)
+
+for i, (clf_name, clf) in enumerate(classifiers.items(), 1):
+    for j, dataset_name in enumerate(datasets.keys(), 1):
+        plt.subplot(num_classifiers, num_datasets, (i - 1) * num_datasets + j)
+
         param_name = list(parameter_values[clf_name].keys())[0]
         param_values = parameter_values[clf_name][param_name]
-        accuracies = calculate_accuracy(clf, param_name, param_values, x_train, y_train, x_test, y_test)
-        data.append(accuracies)
-    box_data.append(data)
-    plt.subplot(7, 3, i)
-    plt.boxplot(data, positions=np.arange(1, 4), showfliers=False)
-    plt.title(clf_name)
-    plt.xticks(np.arange(1, 4), ["steel-plates-fault", "ionosphere", "banknotes"])
-    i += 1
+        accuracies = calculate_accuracy(clf, param_name, param_values,
+                                        x_train_datasets[dataset_name], y_train_datasets[dataset_name],
+                                        x_test_datasets[dataset_name], y_test_datasets[dataset_name])
+        print("Accuracy:")
+        print(accuracies)
+
+        # Create positions for boxplots (for each parameter value)
+        positions = []
+        for i in range(len(accuracies)):
+            positions.append((i + 1))
+
+        print("positions: ")
+        print(positions)
+
+        plt.boxplot(accuracies, showfliers=False)
+
+        plt.title(f"{dataset_name} - {clf_name}")
+        plt.xlabel("Parameter Values")
+        plt.ylabel("Accuracy")
+        plt.xticks(positions, param_values)  # Set x-axis labels as parameter values
 
 plt.tight_layout()
 plt.show()
@@ -92,9 +136,13 @@ for clf_name, clf in classifiers.items():
     data1 = []
     data2 = []
     for dataset_name, (x_train, x_test, y_train, y_test) in zip(["steel-plates-fault", "ionosphere", "banknotes"],
-                                                                [(x_train_steel, x_test_steel, y_train_steel, y_test_steel),
-                                                                 (x_train_ionosphere, x_test_ionosphere, y_train_ionosphere, y_test_ionosphere),
-                                                                 (x_train_banknotes, x_test_banknotes, y_train_banknotes, y_test_banknotes)]):
+                                                                [(x_train_steel, x_test_steel, y_train_steel,
+                                                                  y_test_steel),
+                                                                 (x_train_ionosphere, x_test_ionosphere,
+                                                                  y_train_ionosphere, y_test_ionosphere),
+                                                                 (
+                                                                 x_train_banknotes, x_test_banknotes, y_train_banknotes,
+                                                                 y_test_banknotes)]):
         param_name = list(parameter_values[clf_name].keys())[0]
         param_values = parameter_values[clf_name][param_name]
         accuracies = calculate_accuracy(clf, param_name, param_values, x_train, y_train, x_test, y_test)
@@ -106,10 +154,12 @@ for clf_name, clf in classifiers.items():
     table2_data.append(data2)
 
 # Display Table 1
-table1_df = pd.DataFrame(table1_data, columns=["steel-plates-fault", "ionosphere", "banknotes"], index=classifiers.keys())
+table1_df = pd.DataFrame(table1_data, columns=["steel-plates-fault", "ionosphere", "banknotes"],
+                         index=classifiers.keys())
 print("Table 1 (Best Mean Value of Test Errors):")
 print(table1_df)
 
 # Display Table 2
-table2_df = pd.DataFrame(table2_data, columns=["steel-plates-fault", "ionosphere", "banknotes"], index=classifiers.keys())
+table2_df = pd.DataFrame(table2_data, columns=["steel-plates-fault", "ionosphere", "banknotes"],
+                         index=classifiers.keys())
 print
