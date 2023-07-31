@@ -26,7 +26,7 @@ classifiers = {
     'DecisionTreeClassifier': DecisionTreeClassifier(),
     'GradientBoostingClassifier': GradientBoostingClassifier(),
     'RandomForestClassifier': RandomForestClassifier(),
-    'MLPClassifier': MLPClassifier(max_iter=1000)
+    'MLPClassifier': MLPClassifier()
 }
 
 # Define hyperparameter values for each classifier
@@ -121,7 +121,7 @@ for i, (clf_name, clf) in enumerate(classifiers.items()):
                                                                     test_size=0.5, random_state=42)
                 accuracies = calculate_accuracy(clf, param_name, param_values,
                                                 x_train, y_train, x_test, y_test)
-                all_accuracies.append(np.mean(accuracies))
+                all_accuracies.append(accuracies)
 
             positions = np.arange(1, len(param_values) + 1)
             positions_dict[(clf_name, dataset_name, param_name)] = positions
@@ -131,9 +131,10 @@ for i, (clf_name, clf) in enumerate(classifiers.items()):
             ax.set_title(f"{dataset_name} - {clf_name} ({param_name})", fontsize=8)
             ax.set_xlabel("Parameter Values", fontsize=8)
             ax.set_ylabel("Mean Accuracy", fontsize=8)
-            ax.set_xticks(positions)  # Set x-axis labels as parameter values
-            ax.set_xticklabels(param_values, rotation=45, ha='right', fontsize=8)  # Rotate and align x-axis labels
+            ax.set_xticks(positions)
+            ax.set_xticklabels(param_values, fontsize=8)  # Rotate and align x-axis labels
 
+            
 plt.tight_layout()  # Adjust spacing and layout
 plt.show()
 
