@@ -94,46 +94,50 @@ y_test_datasets = {
     "banknotes": y_test_banknotes
 }
 
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
-import seaborn as sns
 
-# Rest of your code...
 
-# Create a 7-by-3 table of boxplots for classifier accuracy versus parameter values
-plt.figure(figsize=(60, 50))
-num_classifiers = len(classifiers)
-num_datasets = len(datasets)
 
+
+
+# Define the number of repetitions
+num_repetitions = 5
 positions_dict = {}
 
-# Adjust the height_ratios to increase the subplot height
-fig, axs = plt.subplots(num_classifiers, num_datasets, figsize=(15, 20),
-                        gridspec_kw={'height_ratios': [1.5] * num_classifiers})
+# Create the figure and subplots
+fig, axs = plt.subplots(len(classifiers), len(datasets), figsize=(15, 10), sharex='col')
 
-for i, (clf_name, clf) in enumerate(classifiers.items(), 1):
-    for j, dataset_name in enumerate(datasets.keys(), 1):
-        ax = axs[i - 1, j - 1]
+#Rows
+for i, (clf_name, clf) in enumerate(classifiers.items()):
+    #Cols
+    for j, dataset_name in enumerate(datasets.keys()):
+        ax = axs[i, j]
 
-        param_name = list(parameter_values[clf_name].keys())[0]
-        param_values = parameter_values[clf_name][param_name]
-        accuracies = calculate_accuracy(clf, param_name, param_values,
-                                        x_train_datasets[dataset_name], y_train_datasets[dataset_name],
-                                        x_test_datasets[dataset_name], y_test_datasets[dataset_name])
-        positions = np.arange(1, len(accuracies) + 1)
-        positions_dict[(clf_name, dataset_name)] = positions
+        for param_name, param_values in parameter_values[clf_name].items():
+            all_accuracies = []
+            for _ in range(num_repetitions):
+                # Perform train-test split with 50:50 ratio and a random state to get reproducible splits
+                x_train, x_test, y_train, y_test = train_test_split(datasets[dataset_name]["data"],
+                                                                    datasets[dataset_name]["target"],
+                                                                    test_size=0.5, random_state=42)
+                accuracies = calculate_accuracy(clf, param_name, param_values,
+                                                x_train, y_train, x_test, y_test)
+                all_accuracies.append(np.mean(accuracies))
 
-        ax.boxplot(accuracies, showfliers=False)
+            positions = np.arange(1, len(param_values) + 1)
+            positions_dict[(clf_name, dataset_name, param_name)] = positions
 
-        ax.set_title(f"{dataset_name} - {clf_name}",fontsize=8)
-        ax.set_xlabel("Parameter Values",fontsize=8)
-        ax.set_ylabel("Accuracy",fontsize=8)
-        ax.set_xticks(positions)  # Set x-axis labels as parameter values
-        ax.set_xticklabels(param_values, rotation=45, ha='right',fontsize=8)  # Rotate and align x-axis labels
+            ax.boxplot(all_accuracies, showfliers=False)
+
+            ax.set_title(f"{dataset_name} - {clf_name} ({param_name})", fontsize=8)
+            ax.set_xlabel("Parameter Values", fontsize=8)
+            ax.set_ylabel("Mean Accuracy", fontsize=8)
+            ax.set_xticks(positions)  # Set x-axis labels as parameter values
+            ax.set_xticklabels(param_values, rotation=45, ha='right', fontsize=8)  # Rotate and align x-axis labels
 
 plt.tight_layout()  # Adjust spacing and layout
 plt.show()
+
+
 
 
 # Create Table 1 and Table 2
