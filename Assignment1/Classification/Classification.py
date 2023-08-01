@@ -1,3 +1,5 @@
+from _pydecimal import Decimal, ROUND_HALF_UP
+
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.datasets import fetch_openml
@@ -57,6 +59,12 @@ def calculate_accuracy(classifier, param_name, param_value, x_train, y_train, x_
 
     return all_accuracies
 
+# Method for rounding to Sf
+def round_to_sf(number, sf):
+    return Decimal(number).quantize(Decimal('1e-{0}'.format(sf)), rounding=ROUND_HALF_UP)
+
+
+
 # Extract features and labels for each dataset
 x_steel, labels_steel = datasets["steel-plates-fault"]["data"], datasets["steel-plates-fault"]["target"]
 x_ionosphere, labels_ionosphere = datasets["ionosphere"]["data"], datasets["ionosphere"]["target"]
@@ -66,36 +74,50 @@ x_banknotes, labels_banknotes = datasets["banknotes"]["data"], datasets["banknot
 
 
 # Number of repetitions
-num_repetitions = 1
+num_repetitions = 50
 positions_dict = {}
 
-# Create the figure and subplots
+# Data Structs to store stats & figures
 plot_list = []
+best_mean_errors = {}
+best_hyperparams = {}
 
 # Rows
 for i, (clf_name, clf) in enumerate(classifiers.items()):
     fig, axs = plt.subplots(1, len(datasets), figsize=(15, 10), sharex='col')
+    best_mean_errors[clf_name] = {}
+    best_hyperparams[clf_name] = {}
     # Cols
     for j, dataset_name in enumerate(datasets.keys()):
         # Set subplot location
         ax = axs[j]
         # Dict to hold data for plotting
         data = {}
+        # Get the param name
         param_name = list(parameter_values[clf_name].keys())[0]
         # Get the list of hyperparams
         param_values = list(parameter_values[clf_name].values())[0]
 
         for param_value in param_values:
             all_accuracies = []
+            all_errors = []
             for _ in range(num_repetitions):
-                # Perform train-test split with 50:50 ratio and a random state to get reproducible splits
+                # Perform train-test split with 50:50 ratio & rand seed
                 x_train, x_test, y_train, y_test = train_test_split(datasets[dataset_name]["data"],datasets[dataset_name]["target"], test_size=0.5,random_state=_)
 
-                # Calculate the accuracy for the training data set
+                # Calculate the accuracy & errors for the training data set
                 accuracies = calculate_accuracy(clf, param_name, param_value, x_train, y_train, x_test, y_test)
+                errors = [1- acc for acc in accuracies]
                 all_accuracies.extend(accuracies)
+                all_errors.extend(errors)
 
+            # Calc & store accuracies & mean errors
             data[param_value] = all_accuracies
+            best_mean_errors[clf_name][dataset_name] = round_to_sf(np.mean(all_errors),4)
+
+        #Find the hyperparam with best mean error
+        best_param_value = min(data,key=data.get)
+        best_hyperparams[clf_name][dataset_name] = best_param_value
 
         ax.boxplot(list(data.values()))
 
@@ -113,15 +135,10 @@ for i, (clf_name, clf) in enumerate(classifiers.items()):
         ax.set_xlabel("Parameter Values")
         ax.set_ylabel("Mean Accuracy")
 
-        plt.tight_layout()
-        plot_list.append(plt)
-
-
-
-
-for i in range(len(plot_list)):
-    plot_list[i].show()
-
+    # Save plots
+    plt.tight_layout()
+    plt.savefig(f'{clf_name}_plot.png')
+    plot_list.append(plt)
 
 
 
@@ -132,40 +149,54 @@ for i in range(len(plot_list)):
 
 
 
+# Create summary table for best mean values of test errors (Table 1)
+table1_df = pd.DataFrame(best_mean_errors)
+table1_df = table1_df.T
+table1_df.index.name = 'Dataset'
+table1_df.columns.name = 'Classifier'
 
 
-# Create Table 1 and Table 2
-table1_data = []
-table2_data = []
-for clf_name, clf in classifiers.items():
-    data1 = []
-    data2 = []
-    for dataset_name, (x_train, x_test, y_train, y_test) in zip(["steel-plates-fault", "ionosphere", "banknotes"],
-                                                                [(x_train_steel, x_test_steel, y_train_steel,
-                                                                  y_test_steel),
-                                                                 (x_train_ionosphere, x_test_ionosphere,
-                                                                  y_train_ionosphere, y_test_ionosphere),
-                                                                 (
-                                                                         x_train_banknotes, x_test_banknotes,
-                                                                         y_train_banknotes,
-                                                                         y_test_banknotes)]):
-        param_name = list(parameter_values[clf_name].keys())[0]
-        param_values = parameter_values[clf_name][param_name]
-        accuracies = calculate_accuracy(clf, param_name, param_values, x_train, y_train, x_test, y_test)
-        best_accuracy = max(accuracies)
-        best_param_value = param_values[np.argmax(accuracies)]
-        data1.append(best_accuracy)
-        data2.append(best_param_value)
-    table1_data.append(data1)
-    table2_data.append(data2)
+# Create summary table for corresponding hyperparameter values (Table 2)
+table2_df = pd.DataFrame(best_hyperparams)
+table2_df = table2_df.T
+table2_df.index.name = 'Dataset'
+table2_df.columns.name = 'Classifier'
 
-# Display Table 1
-table1_df = pd.DataFrame(table1_data, columns=["steel-plates-fault", "ionosphere", "banknotes"],
-                         index=classifiers.keys())
-print("Table 1 (Best Mean Value of Test Errors):")
-print(table1_df)
 
-# Display Table 2
-table2_df = pd.DataFrame(table2_data, columns=["steel-plates-fault", "ionosphere", "banknotes"],
-                         index=classifiers.keys())
-print
+# Save tables as PNG images
+fig_tables = plt.figure(figsize=(12, 6))
+
+# Plot Table 1
+ax_tables1 = fig_tables.add_subplot(1, 2, 1)
+ax_tables1.axis('off')  # Turn off axis
+ax_tables1.table(cellText=table1_df.values,
+                 colLabels=table1_df.columns,
+                 cellLoc='center',
+                 loc='center',
+                 colColours=['#f5f5f5'] * len(table1_df.columns),
+                 cellColours=[['#f5f5f5'] * len(table1_df.columns)] * len(table1_df),
+                 rowLabels=table1_df.index)
+
+# Plot Table 2
+ax_tables2 = fig_tables.add_subplot(1, 2, 2)
+ax_tables2.axis('off')  # Turn off axis
+ax_tables2.table(cellText=table2_df.values,
+                 colLabels=table2_df.columns,
+                 cellLoc='center',
+                 loc='center',
+                 colColours=['#f5f5f5'] * len(table2_df.columns),
+                 cellColours=[['#f5f5f5'] * len(table2_df.columns)] * len(table2_df),
+                 rowLabels=table2_df.index)
+
+# Add titles
+plt.suptitle('Summary Tables', fontsize=16)  # This will add a title above both tables
+ax_tables1.set_title('Table 1: Best Mean Values of Test Errors')
+ax_tables2.set_title('Table 2: Corresponding Hyperparameter Values')
+plt.tight_layout()
+
+# Save the tables as a PNG image to a different file
+fig_tables.savefig('tables.png', dpi=300)
+
+
+
+
