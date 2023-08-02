@@ -1,0 +1,8 @@
+Dataset,steel-plates-fault,ionosphere,banknotes
+KNN,1.0,5.0,1.0
+GaussianNB,1e-09,0.1,0.1
+LogisticRegression,0.1,5.0,0.1
+DecisionTreeClassifier,1.0,1.0,1.0
+GradientBoostingClassifier,1.0,5.0,1.0
+RandomForestClassifier,1.0,1.0,1.0
+MLPClassifier,10.0,10.0,10.0

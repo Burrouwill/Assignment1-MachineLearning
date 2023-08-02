@@ -195,6 +195,8 @@ ax_tables2.set_title('Table 2: Corresponding Hyperparameter Values')
 plt.tight_layout()
 
 # Save the tables as a PNG image to a different file
+table1_df.to_csv('table1.csv')
+table2_df.to_csv('table2.csv')
 fig_tables.savefig('tables.png', dpi=300)
 
 
